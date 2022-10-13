@@ -1,0 +1,111 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{fancyvrb}
+\title{Lenguajes de programación}
+\author{Oscar Eduardo Galaviz Cuen}
+\date{7 de Septiembre de 2022}
+
+\begin{document}
+
+\maketitle
+\begin{itemize}
+    
+    \item{Exercise 3.20  [$\star$] In PROC, procedures have only one argument, but one can get the effect of multiple argument procedures by using procedures that return other procedures. For example, one might write code like
+    \begin{Verbatim}
+        let f = proc (x) proc (y) ...
+        in ((f 3) 4)
+    \end{Verbatim}
+    This trick is called Currying, and the procedure is said to be Curried. Write a Curried procedure that takes two arguments and returns their sum.  You can write x+y in our language by writing $-(x,-(0,y))$.}
+    \begin{Verbatim}
+        let f = proc (x) proc (y) -(x, -(0,y))
+        in ((f 3) 4)
+    \end{Verbatim}
+    \item{Exercise 3.27 [$\star$]  Add a new kind of procedure called a traceproc to the language. A traceproc works exactly like a proc,  except that  it  prints a  trace  message on entry and on exit.\\}
+    Sintaxis concreta:\\
+    \textit{Expressión} ::= \textbf{traceproc} (\textit{Identifier}) \textit{Expression}\\
+    Sintaxis abstracta:\\
+    (traceproc-exp var body)\\
+    En la semantica se mantienen los mismos valores expresados y denotados.
+    \begin{Verbatim}
+        (value-of (traceproc-exp var body) env)
+        = (proc-val (procedure var body env))
+    \end{Verbatim}
+    Cambios en procedure:
+    \begin{verbatim}
+        (define-datatype proc proc?
+            (procedure
+                (var identifier?)
+                (body expression?)
+                (saved-env environment?))
+            (trace-procedure
+                (var identifier?)
+                (body expression?)
+                (saved-env environment?)))
+    \end{verbatim}
+    Cambios en apply-procedure:\\
+    \begin{Verbatim}
+        (define (apply-procedure proc1 val)
+            (cases proc proc 1
+                (procedure (var body env)
+                    (valueof-body [var = val]env))
+                (trace-procedure (var body env)
+                    (display "Entering proc...")
+                    (valueof-body [var = val]env)
+                    (display "Exiting proc..."))))
+    \end{Verbatim}
+    \item{Exercise 3.28  [$\star \star$] Dynamic binding(or dynamic scoping) is an alternative design for procedures, in which the procedure body is evaluated in an environment obtained by extending the environment at the point of call. For example in}
+    \begin{Verbatim}
+        let a = 3
+        in let p = proc (x) -(x,a)
+               a = 5
+            in -(a, (p 2))
+    \end{Verbatim}
+    the a in the procedure body would be bound to 5, not 3. Modify the language to use dynamic binding.  Do this twice, once using a procedural representation for procedures, and once using a data-structure representation.\\
+    Cómo esta vez el ambiente es extendido hasta la llamada a función, entonces proc-val ya no va a recibir un ambiente, por ende:
+    \begin{Verbatim}
+        (value-of (proc-exp var body) env)
+            = (proc-val (procedure var body))
+    \end{Verbatim}
+    Con esto, ya nos damos cuenta que cambia el value-of de call-exp, pues este, al obtener el valor de tipo procedimiento, de la expresión evaluada de op-exp, este ya no recibe un ambiente, y a falta de este, ahora se tiene que enviar en apply-procedure.
+    \begin{Verbatim}
+          (value-of (call-exp op-exp arg-exp) env)
+            =(let ([proc (expval->proc (value-of op-exp env))]
+                   [arg (value-of arg-exp env)])
+                (apply-procedure proc arg env))
+        donde:
+          (apply-procedure (procedure var body) val env)
+              =(value-of body [var = val]env)
+    \end{Verbatim}
+    \begin{itemize}
+        \item Representación con procedimientos:\\
+        Cambios en procedure:
+        \begin{Verbatim}
+            (define (procedure var body)
+                (value-of body env)
+        \end{Verbatim}
+        Cambios en apply-procedure:
+        \begin{Verbatim}
+            (define (apply-procedure proc1 val env)
+            (proc1 val [var = val]env))
+        \end{Verbatim}
+        \item Representación con estructuras de datos:\\
+        Cambios en procedure:
+        \begin{Verbatim}
+            (define-datatype proc proc?
+                (procedure
+                    (var identifier?)
+                    (body expression?)))
+        \end{Verbatim}
+        Cambios en apply-procedure:
+        \begin{verbatim}
+            (define apply-procedure proc val env
+                (cases proc proc1
+                    (procedure (var body)
+                        (value-of body [var = val]env))))
+        \end{verbatim}
+    \end{itemize}
+
+\end{itemize}
+\end{document}
